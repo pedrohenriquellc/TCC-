@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Login — Projeto Seguro{% endblock %}
+{% block content %}
+  <h1>🔐 Acesso Restrito</h1>
+  <p class="subtitle">Projeto Aplicado: Práticas de Mercado</p>
+
+  {% if rate_limited %}
+    <div class="flash flash-danger">
+      Muitas tentativas de login. Aguarde um instante e tente novamente.
+    </div>
+  {% endif %}
+
+  <form method="POST" action="{{ url_for('login') }}" autocomplete="off" novalidate>
+    <!-- Token CSRF (Flask-WTF) — protege contra requisições forjadas (A05/A08) -->
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <label for="username">Usuário</label>
+    <input type="text" id="username" name="username"
+           pattern="[A-Za-z0-9_.\-]{3,32}" required
+           maxlength="32" autofocus>
+
+    <label for="password">Senha</label>
+    <input type="password" id="password" name="password" required maxlength="128">
+
+    <button type="submit">Entrar</button>
+  </form>
+{% endblock %}

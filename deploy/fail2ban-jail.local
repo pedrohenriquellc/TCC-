@@ -1,0 +1,26 @@
+# =========================================================================
+#  Fail2Ban — proteção da porta 22 (SSH) contra força bruta (Eixo 1).
+#  Critério obrigatório: tolerância de 4 erros e banimento por 24 horas.
+#  Instale em: /etc/fail2ban/jail.local
+#  Depois:     sudo systemctl enable --now fail2ban
+#              sudo fail2ban-client status sshd
+# =========================================================================
+[DEFAULT]
+# Banimento por 24 horas (86400 segundos).
+bantime  = 24h
+# Janela de contagem das tentativas.
+findtime = 10m
+# Ignora a própria máquina.
+ignoreip = 127.0.0.1/8 ::1
+
+[sshd]
+enabled  = true
+port     = ssh
+# Tolerância de 4 erros: o Fail2Ban bane o IP quando o nº de falhas
+# dentro de 'findtime' atinge 'maxretry'. Com maxretry=4, a 4ª tentativa
+# malsucedida dispara o banimento (critério: tolerância de 4 erros).
+maxretry = 4
+bantime  = 24h
+findtime = 10m
+# No Ubuntu/Debian recentes o SSH loga via systemd journal.
+backend  = systemd

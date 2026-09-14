@@ -1,0 +1,61 @@
+# =========================================================================
+#  PREVENÇÃO DE VAZAMENTO DE DADOS (Eixo 2 — critério obrigatório)
+#  Nunca versionar segredos, chaves ou credenciais.
+# =========================================================================
+
+# Variáveis de ambiente e segredos
+.env
+.env.*
+!.env.example
+*.env
+
+# Chaves privadas / SSH / certificados
+*.pem
+*.key
+*.ppk
+id_rsa
+id_ed25519
+id_*
+*.p12
+*.pfx
+*.crt
+*.cer
+known_hosts
+
+# Credenciais de nuvem (Oracle/AWS/GCP/Azure)
+.oci/
+oci_api_key*.pem
+.aws/
+credentials
+*.tfvars
+service-account*.json
+gcloud/
+azure.json
+
+# Bancos de dados locais
+*.sqlite
+*.sqlite3
+*.db
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+instance/
+
+# Logs e temporários
+*.log
+*.tmp
+*.bak
+.DS_Store
+Thumbs.db
+
+# IDE / editores
+.vscode/
+.idea/
+*.swp

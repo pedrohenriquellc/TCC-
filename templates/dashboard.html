@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Painel — Projeto Seguro{% endblock %}
+{% block content %}
+  <h1>✅ Área Interna</h1>
+  {# 'user' vem da sessão e é escapado automaticamente pelo Jinja2 (A05/XSS) #}
+  <p class="subtitle">Bem-vindo(a), <strong>{{ user }}</strong>.</p>
+
+  <div class="panel">
+    <p>Esta página só é acessível <em>após autenticação</em>.
+       Se você tentar abrir <code>/dashboard</code> sem estar logado,
+       o controle de acesso (A01) redireciona para o login.</p>
+  </div>
+
+  <!-- Logout via POST + token CSRF: evita logout forçado por terceiros -->
+  <form method="POST" action="{{ url_for('logout') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn-secondary">Sair (Logout)</button>
+  </form>
+{% endblock %}

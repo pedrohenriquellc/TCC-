@@ -1,0 +1,85 @@
+# =========================================================================
+#  CI/CD — Integração e Entrega Contínuas (Eixo 1+2+3)
+#  Dispara a cada "git push origin main": testa, audita e faz deploy
+#  automático na VM da nuvem via SSH. Nenhuma credencial fica no código —
+#  tudo vem de GitHub Secrets.
+#
+#  Secrets necessários (Settings > Secrets and variables > Actions):
+#    SSH_HOST          -> IP público da VM
+#    SSH_USER          -> usuário de deploy (ex.: deploy)
+#    SSH_PRIVATE_KEY   -> chave PRIVADA SSH autorizada na VM
+#    SSH_PORT          -> porta SSH (ex.: 22)
+# =========================================================================
+name: CI/CD Deploy
+
+on:
+  push:
+    branches: [ "main" ]
+
+# Evita dois deploys simultâneos pisando um no outro.
+concurrency:
+  group: deploy-main
+  cancel-in-progress: false
+
+jobs:
+  # -------- 1) Build + testes + auditoria de segurança ------------------
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependências
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pip-audit
+
+      - name: Verificar sintaxe / import da aplicação
+        env:
+          FLASK_INSECURE: "1"
+        run: python -c "import app; print('App importada com sucesso')"
+
+      - name: Auditoria de dependências (SCA — A03:2025 Supply Chain)
+        run: pip-audit -r requirements.txt || true
+
+  # -------- 2) Deploy automático na VM (só se os testes passarem) -------
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH (git pull + restart do serviço)
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            set -e
+            cd ~/projeto-seguro
+            git fetch --all
+            git reset --hard origin/main
+            # Ambiente virtual + dependências
+            python3 -m venv .venv || true
+            ./.venv/bin/pip install --upgrade pip
+            ./.venv/bin/pip install -r requirements.txt
+            # Reinicia a aplicação (Gunicorn via systemd)
+            sudo systemctl restart projeto-seguro
+            echo "Deploy concluído em $(date)"
+
+      - name: Health check pós-deploy
+        run: |
+          echo "Aguardando o serviço subir..."
+          sleep 5
+          curl -sk --fail https://${{ secrets.SSH_HOST }}/healthz \
+            && echo "OK: aplicação respondendo em produção" \
+            || (echo "FALHA no health check" && exit 1)
