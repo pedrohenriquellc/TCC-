@@ -5,8 +5,9 @@ aplicando **Secure by Design** e **Secure by Default** em todo o ciclo de vida
 da aplicação, integrando **infraestrutura em nuvem**, **versionamento**,
 **desenvolvimento** e um **pipeline de CI/CD**.
 
-- **Aplicação no ar:** `https://SEU_IP_PUBLICO/`  *(substitua pelo IP da sua VM)*
-- **Stack:** Python 3.12 · Flask · Gunicorn · Nginx · Ubuntu Server · Oracle Cloud (Free Tier)
+- **Aplicação no ar:** **https://144.22.166.21/**  *(IP público da VM na Oracle Cloud)*
+- **Stack:** Python · Flask · Gunicorn · Nginx · Ubuntu Server 26.04 · Oracle Cloud (Free Tier)
+- **Credenciais de demonstração:** usuário `admin` / senha definida em `DEMO_PASSWORD` (no `.env` da VM, fora do Git)
 
 ---
 
