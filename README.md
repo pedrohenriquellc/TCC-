@@ -1,251 +1,184 @@
-# 🔐 Projeto Aplicado: Práticas de Mercado — Protótipo Web Seguro
+# Protótipo Web Seguro · Projeto Aplicado (Práticas de Mercado)
 
-Relatório técnico da entrega. O projeto simula um ambiente de mercado real
-aplicando **Secure by Design** e **Secure by Default** em todo o ciclo de vida
-da aplicação, integrando **infraestrutura em nuvem**, **versionamento**,
-**desenvolvimento** e um **pipeline de CI/CD**.
+Aplicação web mínima levada da escrita do código até a produção em nuvem, tratando
+**segurança como parte da arquitetura** (Secure by Design) e mantendo **a configuração
+padrão já endurecida** (Secure by Default). A entrega cobre os três eixos da disciplina
+— desenvolvimento, versionamento e infraestrutura — costurados por uma automação de
+implantação.
 
-| Recurso | Endereço |
+**Onde ver funcionando**
+
+| | Endereço |
 |---|---|
-| Aplicação (IP público) | **https://144.22.166.21/** |
-| Aplicação (hostname p/ teste TLS) | **https://144-22-166-21.sslip.io/** |
-| Repositório | https://github.com/pedrohenriquellc/TCC- |
+| 🌐 Aplicação (IP) | https://144.22.166.21/ |
+| 🔗 Aplicação (hostname de teste) | https://144-22-166-21.sslip.io/ |
+| 💾 Código-fonte | https://github.com/pedrohenriquellc/TCC- |
 
-- **Stack:** Python · Flask · Gunicorn · Nginx · Ubuntu Server 26.04 · Oracle Cloud (Free Tier)
-- **Credenciais de demonstração:** usuário `admin` / senha definida em `DEMO_PASSWORD` (no `.env` da VM, fora do Git)
+`Python 3` · `Flask` · `Gunicorn` · `Nginx` · `Ubuntu Server 26.04` · `Oracle Cloud (Free Tier)`
 
-> **Codificação assistida por IA:** todo o código, a auditoria de segurança e a
-> configuração de infraestrutura foram desenvolvidos com o auxílio de um
-> assistente de IA (fluxo equivalente ao proposto pela IDE Antigravity),
-> incluindo geração de código seguro, depuração e refatoração.
+Acesso de demonstração: `admin` / a senha fica em `DEMO_PASSWORD` (no arquivo `.env`
+do servidor, que nunca é versionado).
 
----
-
-## 🏆 Evidências de TLS/PQC
-
-A entrega é por **IP público**, portanto a validação principal segue o **caminho IP**
-da atividade (SSL.org + DigiCert). Como reforço, incluímos também o **caminho Domínio**
-(Qualys SSL Labs) via hostname `sslip.io`, que resolve para o mesmo IP.
-
-### ✅ Caminho IP (validação principal — `144.22.166.21`)
-
-**1. SSL.org — SSL Certificate Checker** · https://www.ssl.org/
-- **Certificate Trusted: YES**
-- **Algorithm / Key Type & Size: Good signature · Good key** (ECDSA P-256 / SHA-384)
-- Emissor: **Let's Encrypt** · perfil short-lived (cert de IP) · TLS 1.2 e 1.3
-
-![SSL.org — Certificate Trusted YES no IP](docs/evidencias/ssl-org-ip.png)
-
-**2. DigiCert — TLS Quantum Readiness Check (PQC)** · https://www.digicert.com/pqc-checker
-- **PASS** — *TLS 1.3 enabled*
-- **PASS** — *Quantum-safe key exchange* (ML-KEM / `X25519MLKEM768`)
-
-![DigiCert PQC — PASS no IP](docs/evidencias/digicert-pqc-ip.png)
-
-### ➕ Caminho Domínio (reforço — Qualys SSL Labs)
-
-Relatório ao vivo: **https://www.ssllabs.com/ssltest/analyze.html?d=144-22-166-21.sslip.io**
-- **Overall Rating: A+** · suporte a **PQC** (`X25519MLKEM768`) · TLS 1.3 · HSTS válido
-
-![SSL Labs — nota A+ com suporte a PQC](docs/evidencias/ssllabs.png)
-
-> O teste do SSL Labs não avalia endereços IP diretamente; por isso o caminho Domínio
-> usa o hostname `144-22-166-21.sslip.io`, que resolve para o mesmo IP
-> (`144.22.166.21`) e usa a mesma configuração TLS. **Nenhum domínio foi registrado.**
-
-> 📸 **Prints:** as imagens acima ficam em [`docs/evidencias/`](docs/evidencias/).
-> Como o certificado de IP tem validade curta (renovação automática), recapture os
-> prints perto da apresentação — os resultados se mantêm.
+> **Fluxo de trabalho com IA.** A construção do protótipo — escrita, refatoração e
+> revisão de segurança do código, além da configuração do servidor — foi conduzida em
+> par com um assistente de IA, no modelo de desenvolvimento assistido proposto pela
+> disciplina (IDE Antigravity). O objetivo foi exercitar a interação com o assistente
+> para gerar e depurar código seguro.
 
 ---
 
-## 0. Sobre o projeto (conceito)
+## 🧩 Eixo 3 — A aplicação e o OWASP Top 10:2025
 
-Este projeto simula o **ciclo de vida completo** de uma aplicação web moderna: escrever
-o código, versioná-lo, publicá-lo em nuvem pública e mantê-lo em produção — **com
-segurança em cada etapa**, e não como um remendo no fim. Dois princípios guiam tudo:
+Um app Flask enxuto, **sem banco de dados** (dispensado pela atividade): um usuário é
+definido por variáveis de ambiente e a senha é guardada como hash. São quatro rotas:
 
-- **Secure by Design** — a segurança faz parte da arquitetura desde o primeiro commit
-  (controle de acesso, hash de senha, proteção CSRF, cabeçalhos de segurança).
-- **Secure by Default** — a configuração padrão já é a mais segura: cookie de sessão
-  já nasce protegido, o servidor só aceita TLS moderno e só abre as portas necessárias.
+- `GET/POST /login` — formulário de autenticação (com token CSRF);
+- `GET /dashboard` — **página interna, servida apenas com sessão válida**;
+- `POST /logout` — encerra a sessão (via POST + CSRF, para não permitir logout forçado);
+- `GET /healthz` — sonda de disponibilidade usada pela pipeline.
 
-**Em uma frase:** o usuário acessa por HTTPS, faz **login** (senha verificada por hash,
-com proteção contra força bruta e CSRF), é levado a uma **página interna** que só existe
-para quem está autenticado e pode sair pelo **logout**. Por trás, o Nginx faz a
-criptografia TLS (com troca de chave pós-quântica) e repassa as requisições ao app
-Python rodando sob o Gunicorn.
+A escolha por Flask foi proposital: os controles exigidos (sessão, CSRF, cabeçalhos de
+segurança, hash forte, limitação de tentativas) vêm de bibliotecas maduras e com pouca
+superfície de ataque, o que torna cada mitigação simples de implementar **e de comprovar**.
 
-**Por que Python + Flask:** entrega os controles de segurança exigidos com pouco código
-e superfície de ataque pequena — CSRF, sessão, cabeçalhos/HSTS, hash forte e rate
-limiting vêm de bibliotecas maduras, tornando a mitigação OWASP direta e fácil de
-comprovar. Não exige banco de dados (requisito dispensado).
+### As três categorias mitigadas
 
----
+O código neutraliza, de forma ativa, três frentes do
+[OWASP Top 10:2025](https://owasp.org/Top10/2025/):
 
-## 📁 Estrutura do repositório
+**🔒 A01 — Broken Access Control**
+`app.py`, decorator `login_required` sobre a rota `/dashboard`. O conteúdo interno só é
+entregue quando há `session["user"]`; qualquer tentativa direta sem sessão cai em
+redirecionamento para `/login`. O logout, sendo POST com token CSRF, impede que
+terceiros forcem a saída de um usuário.
 
-```
-projeto-seguro/
-├── app.py                     # Aplicação Flask (login, área interna, logout)
-├── requirements.txt           # Dependências Python
-├── templates/                 # HTML (Jinja2, autoescape ligado)
-│   ├── base.html
-│   ├── login.html
-│   └── dashboard.html
-├── static/style.css
-├── .env.example               # Modelo de variáveis (o .env real NÃO é versionado)
-├── .gitignore                 # Bloqueia segredos, chaves e credenciais
-├── .github/workflows/deploy.yml   # Pipeline CI/CD (GitHub Actions)
-├── docs/
-│   ├── GUIA-INFRAESTRUTURA.md  # Passo a passo da nuvem
-│   └── evidencias/             # Prints dos testes TLS/PQC
-└── deploy/                    # Configs do servidor
-    ├── nginx-projeto-seguro.conf
-    ├── projeto-seguro.service
-    └── fail2ban-jail.local
-```
+**💉 A05 — Injection (incl. XSS)**
+Entrada do campo usuário validada por allowlist (`^[A-Za-z0-9_.-]{3,32}$`) — o que não
+casa é recusado com HTTP 400. A saída dinâmica passa pelo autoescape do Jinja2 (ligado),
+anulando XSS refletido, e todo POST exige token CSRF do Flask-WTF.
 
----
+**🔑 A07 — Authentication Failures**
+Senha nunca em claro: só o hash **scrypt** (`werkzeug.security`) é guardado, e a
+verificação é resistente a *timing*. O login tem **rate limiting** (Flask-Limiter,
+5/min → HTTP 429) contra força bruta, calcula um hash "dummy" para usuários inexistentes
+(evita enumeração) e regenera a sessão a cada entrada (anti session-fixation). O cookie
+de sessão nasce `HttpOnly`, `Secure` e `SameSite=Lax`.
 
-## 💻 Eixo 3 — Desenvolvimento e mitigações OWASP Top 10:2025
+> **Reforço (A02 — Security Misconfiguration):** CSP, `X-Frame-Options`,
+> `X-Content-Type-Options` e HSTS enviados por padrão; `DEBUG` desligado; `SECRET_KEY`
+> obtido do ambiente, nunca no código.
 
-O protótipo possui **tela de login**, **página interna protegida** (`/dashboard`)
-e **logout funcional**, e mitiga ativamente **3 categorias** do
-[OWASP Top 10:2025](https://owasp.org/Top10/2025/).
+### Comportamento observado nos testes
 
-| Rota | Método | Descrição |
+| Requisição | Esperado | Resultado |
 |---|---|---|
-| `/login` | GET/POST | Tela de login (formulário com token CSRF) |
-| `/dashboard` | GET | Página interna — **só acessível autenticado** |
-| `/logout` | POST | Encerra a sessão (POST + CSRF, evita logout forçado) |
-| `/healthz` | GET | Checagem de disponibilidade (usada no deploy/CI) |
+| Login correto | redireciona para `/dashboard` (302) | 302 ✔ |
+| `/dashboard` sem sessão | redireciona para `/login` (302) | 302 ✔ |
+| Logout | volta a `/login` (302) | 302 ✔ |
+| `/dashboard` após logout | bloqueado, vai a `/login` (302) | 302 ✔ |
+| POST de login sem CSRF | recusado (400) | 400 ✔ |
+| Usuário fora da allowlist | recusado (400) | 400 ✔ |
+| Mais de 5 logins/min | limitado (429) | 429 ✔ |
+| `/healthz` | `{"status":"ok"}` (200) | 200 ✔ |
 
-### ✅ A01:2025 — Broken Access Control
-**Onde:** `app.py` → decorator `login_required` + rota `/dashboard`.
-**Como:** a página interna só é servida quando existe uma sessão autenticada
-(`session["user"]`). Qualquer acesso direto a `/dashboard` sem login é negado e
-redirecionado para `/login`. O logout usa **POST + token CSRF**, evitando logout
-forçado por terceiros.
-
-### ✅ A05:2025 — Injection (inclui XSS)
-**Onde:** `app.py` (validação/allowlist + CSRF) e `templates/*.html`.
-**Como:**
-- **Validação de entrada por allowlist** no campo usuário
-  (`^[A-Za-z0-9_.-]{3,32}$`) — entradas maliciosas são rejeitadas (HTTP 400).
-- **Autoescape do Jinja2** mantido ligado: toda saída dinâmica é escapada,
-  neutralizando **XSS refletido**.
-- **Proteção CSRF** (`Flask-WTF`) obrigatória em todos os POST.
-
-### ✅ A07:2025 — Authentication Failures
-**Onde:** `app.py` → função `login()`, dicionário `USERS`, config de sessão.
-**Como:**
-- Senhas **nunca** em texto puro — armazenadas apenas como **hash scrypt**
-  (`werkzeug.security.generate_password_hash`) e verificadas com comparação
-  **resistente a timing** (`check_password_hash`).
-- **Rate limiting** (`Flask-Limiter`, 5 tentativas/min) freia ataques de
-  **força bruta** no login (retorna HTTP 429).
-- Defesa contra **user enumeration**: hash "dummy" computado quando o usuário
-  não existe, mantendo o tempo de resposta constante.
-- **Session fixation** evitada: `session.clear()` regenera a sessão no login.
-- Cookies de sessão com `HttpOnly`, `Secure` e `SameSite=Lax`.
-
-> **Bônus — A02:2025 (Security Misconfiguration):** cabeçalhos de segurança
-> (`Content-Security-Policy`, `X-Frame-Options`, `X-Content-Type-Options`,
-> `Strict-Transport-Security`), `DEBUG` desligado por padrão e `SECRET_KEY`
-> lido de variável de ambiente (nunca hardcoded).
-
-### 🧪 Evidências dos testes (comportamento)
-
-| Cenário testado | Resultado esperado | Obtido |
-|---|---|---|
-| Login válido | 302 → `/dashboard` | ✅ 302 |
-| Acesso a `/dashboard` sem login | 302 → `/login` | ✅ 302 |
-| Logout | 302 → `/login` | ✅ 302 |
-| `/dashboard` após logout | 302 → `/login` | ✅ 302 |
-| POST login sem token CSRF | 400 | ✅ 400 |
-| Entrada fora da allowlist no usuário | 400 | ✅ 400 |
-| 6+ logins/minuto | 429 (rate limit) | ✅ 429 |
-| `/healthz` | 200 `{"status":"ok"}` | ✅ 200 |
-
-### ▶️ Rodando localmente
-
+**Rodar na sua máquina:**
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env        # edite os valores
-FLASK_INSECURE=1 python app.py   # http://127.0.0.1:8000
+cp .env.example .env            # preencha SECRET_KEY, DEMO_USER, DEMO_PASSWORD
+FLASK_INSECURE=1 python app.py  # http://127.0.0.1:8000
 ```
-Credenciais de demonstração: usuário `admin` / senha definida em `DEMO_PASSWORD`.
 
 ---
 
-## ☁️ Eixo 1 — Infraestrutura (Oracle Cloud, Free Tier)
+## ☁️ Eixo 1 — Infraestrutura, TLS e pós-quântica
 
-- **Provedor:** Oracle Cloud Infrastructure, Free Tier (região sa-saopaulo-1).
-- **Instância:** shape `VM.Standard.E2.1.Micro` (Always Free), 1 OCPU / 1 GB.
-- **Sistema operacional:** **Ubuntu Server 26.04 LTS** (OpenSSL 3.5.5).
-- **Servidor web:** **Nginx 1.28** como proxy reverso → Gunicorn (127.0.0.1:8000).
+Servidor provisionado na **Oracle Cloud (Free Tier)**, shape Always Free
+`VM.Standard.E2.1.Micro`, rodando **Ubuntu Server 26.04 LTS** (OpenSSL 3.5.5). O
+**Nginx** faz a terminação TLS e repassa as requisições ao Gunicorn em
+`127.0.0.1:8000`. O passo a passo completo está em
+[`docs/GUIA-INFRAESTRUTURA.md`](docs/GUIA-INFRAESTRUTURA.md).
 
-Passo a passo detalhado em **[`docs/GUIA-INFRAESTRUTURA.md`](docs/GUIA-INFRAESTRUTURA.md)**.
+### O que foi endurecido — e como conferir
 
-### Endurecimento e metas de segurança (com evidência)
-
-| Meta obrigatória | Implementação | Como comprovar |
+| Controle | O que foi feito | Comando de verificação |
 |---|---|---|
-| Acesso remoto só por chave SSH | `PasswordAuthentication no`, chave ed25519 | `sudo sshd -T \| grep passwordauthentication` |
-| Fail2Ban na porta 22 | jail `sshd`, `maxretry=4`, `bantime=24h` | `sudo fail2ban-client status sshd` |
-| Firewall least privilege | Apenas 22, 80, 443 (Security List OCI + UFW/iptables) | `sudo iptables -S INPUT` · `sudo ufw status` |
-| HTTPS (Certbot ≥ 5.4) | Certbot **5.8**, cert Let's Encrypt para IP, perfil short-lived, autorrenovação | `sudo certbot certificates` |
-| Redirect HTTP → HTTPS | Nginx `return 301 https://...` | `curl -I http://144.22.166.21` → **301** |
-| **PQC ativado** | `ssl_ecdh_curve X25519MLKEM768:...` (OpenSSL 3.5) | `openssl s_client -connect 144.22.166.21:443 -groups X25519MLKEM768 -tls1_3` |
+| Login remoto | Só chave SSH (ed25519); senha desativada | `sudo sshd -T \| grep passwordauth` |
+| Anti-brute-force SSH | Fail2Ban na porta 22 — 4 falhas, banimento de 24 h | `sudo fail2ban-client status sshd` |
+| Portas expostas | Apenas 22/80/443 (Security List da OCI + iptables/UFW) | `sudo iptables -S INPUT` |
+| Certificado | Certbot 5.8, cert de IP da Let's Encrypt (short-lived) + renovação automática | `sudo certbot certificates` |
+| Força para HTTPS | Nginx devolve 301 de 80 → 443 | `curl -I http://144.22.166.21` |
+| Pós-quântica | `ssl_ecdh_curve X25519MLKEM768:...` (ML-KEM, OpenSSL 3.5) | `openssl s_client -connect 144.22.166.21:443 -groups X25519MLKEM768 -tls1_3` |
 
-> **Certificados:** o app responde por IP e por hostname.
-> - `144.22.166.21` — cert Let's Encrypt **short-lived (6 dias)**, modalidade usada
->   para certificados de endereço IP. Validação: SSL.org + DigiCert.
-> - `144-22-166-21.sslip.io` — cert Let's Encrypt padrão (90 dias), usado apenas para
->   o teste do SSL Labs (que não avalia IPs). sslip.io resolve para o mesmo IP; nenhum
->   domínio foi registrado. Ambos compartilham a mesma configuração TLS e renovam
->   automaticamente via Certbot.
+As configurações reais estão versionadas em [`deploy/`](deploy/)
+(`nginx-projeto-seguro.conf`, `tls-pqc.conf`, `projeto-seguro.service`,
+`fail2ban-jail.local`).
+
+### Provas de conformidade TLS/SSL e PQC
+
+A aplicação é acessada por **IP**, então a checagem oficial usa as ferramentas indicadas
+para esse caso (SSL.org e DigiCert). Para também rodar o Qualys SSL Labs — que não aceita
+IP puro — o mesmo servidor responde por um hostname `sslip.io` que aponta para o próprio
+IP (`144-22-166-21.sslip.io`); **não houve registro de domínio**, e a configuração TLS é
+a mesma nos dois endereços.
+
+**Pelo IP público `144.22.166.21`:**
+
+- **SSL.org** → *Certificate Trusted: **Yes*** · *Algorithm/Key: **Good signature · Good
+  key*** (ECDSA P-256 / SHA-384) · emissor Let's Encrypt · TLS 1.2 e 1.3
+  ![SSL.org: certificado confiável no IP](docs/evidencias/ssl-org-ip.png)
+
+- **DigiCert PQC Checker** → ***Pass*** — *TLS 1.3 enabled* e *Quantum-safe key exchange*
+  (ML-KEM / `X25519MLKEM768`)
+  ![DigiCert PQC: Pass no IP](docs/evidencias/digicert-pqc-ip.png)
+
+**Pelo hostname (reforço, Qualys SSL Labs):**
+
+- **Nota geral A+**, com TLS 1.3, HSTS válido e troca de chave pós-quântica
+  (`X25519MLKEM768`). Relatório ao vivo:
+  [ssllabs.com/ssltest](https://www.ssllabs.com/ssltest/analyze.html?d=144-22-166-21.sslip.io)
+  ![SSL Labs: nota A+ com PQC](docs/evidencias/ssllabs.png)
+
+> Os prints estão em [`docs/evidencias/`](docs/evidencias/). Como o certificado de IP
+> tem vida curta e se renova sozinho, basta refazer as capturas perto da apresentação —
+> os resultados permanecem.
 
 ---
 
-## 📦 Eixo 2 — Repositório e prevenção de vazamento
+## 📦 Eixo 2 — Versionamento sem vazamentos
 
-- Código público no **GitHub**, conta protegida com **2FA** e operações via
-  **chave SSH** (ou PAT).
-- **`.gitignore`** bloqueia `.env`, chaves privadas (`*.pem`, `id_*`),
+- Repositório **público** no GitHub; conta com **2FA** e operações autenticadas por
+  chave SSH (ou PAT).
+- O [`.gitignore`](.gitignore) barra `.env`, chaves privadas (`*.pem`, `id_*`),
   credenciais de nuvem (`.oci/`, `.aws/`), senhas e bancos locais.
-- **Nenhuma credencial real** é versionada — segredos ficam em `.env` (local,
-  fora do Git) e em **GitHub Secrets** (pipeline).
+- Nada de segredo real no histórico: valores sensíveis vivem no `.env` local (fora do
+  Git) e nos **GitHub Secrets** usados pela pipeline.
 
 ---
 
-## 🔄 CI/CD — GitHub Actions
+## 🔄 Entrega contínua (GitHub Actions)
 
-Arquivo: **[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)**.
-A cada `git push origin main`:
+Todo `git push origin main` aciona
+[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml), em três etapas:
 
-1. **test** — instala dependências, valida a aplicação e roda auditoria de
-   dependências (`pip-audit`, mitigando **A03:2025 — Software Supply Chain**).
-2. **deploy** — conecta na VM via **SSH** (credenciais em **Secrets**), atualiza
-   o código (`git reset --hard origin/main`), reinstala dependências e reinicia
-   o serviço (`systemctl restart projeto-seguro`).
-3. **health check** — valida `https://144.22.166.21/healthz` após o deploy.
+1. **Verificação** — instala dependências, importa a aplicação e roda `pip-audit`
+   (auditoria de dependências, tocando em **A03 — Software Supply Chain**).
+2. **Publicação** — via SSH (chaves em Secrets), atualiza o código na VM
+   (`git reset --hard origin/main`), reinstala dependências e reinicia o serviço.
+3. **Sonda** — confirma `https://144.22.166.21/healthz` após o deploy.
 
-**Secrets configurados no GitHub:** `SSH_HOST`, `SSH_USER`, `SSH_PRIVATE_KEY`,
-`SSH_PORT` — nenhuma chave exposta no `.yml`.
+Os segredos `SSH_HOST`, `SSH_USER`, `SSH_PORT` e `SSH_PRIVATE_KEY` ficam nos GitHub
+Secrets; o arquivo `.yml` não contém nenhuma credencial.
 
 ---
 
-## ✅ Checklist de entrega
+## ✅ Conferência final da entrega
 
-- [x] Aplicação web no ar via IP público (Eixo 1)
-- [x] Nginx com HTTPS (Certbot/Let's Encrypt) e redirecionamento HTTP→HTTPS
-- [x] Testes TLS/SSL em conformidade + PQC ativado (SSL.org, DigiCert, SSL Labs)
-- [x] Acesso por chave SSH + Fail2Ban (4 tentativas / 24h) na porta 22
-- [x] Repositório público no GitHub com conta configurada (2FA/SSH)
-- [x] `.gitignore` correto, sem segredos expostos
-- [x] Login + página interna + logout, desenvolvido com auxílio de IA
-- [x] 3 itens do OWASP Top 10:2025 mitigados e documentados (A01, A05, A07)
-- [x] CI/CD automatizado com GitHub Actions
+- [x] App no ar por IP público, servido pelo Nginx
+- [x] HTTPS (Certbot/Let's Encrypt) com redirecionamento automático de 80 → 443
+- [x] Conformidade TLS/PQC comprovada (SSL.org, DigiCert e SSL Labs A+)
+- [x] SSH só por chave + Fail2Ban (4 tentativas / 24 h) na porta 22
+- [x] Repositório público, conta protegida, sem segredos versionados
+- [x] Login, página interna e logout — com apoio de IA no desenvolvimento
+- [x] Três categorias do OWASP Top 10:2025 tratadas (A01, A05, A07)
+- [x] Implantação automatizada por GitHub Actions
